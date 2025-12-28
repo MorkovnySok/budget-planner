@@ -25,11 +25,12 @@ interface PieSlice {
 export class AppComponent {
   income = 0;
   interestRate = 0;
+  forecastPeriodValue = 12;
+  forecastPeriodUnit: 'months' | 'years' = 'months';
   categories: Category[] = [];
   allocationClamped = false;
   needsIncomeWarning = false;
   private readonly chartColors = ['#2563eb', '#f97316', '#14b8a6', '#a855f7', '#facc15', '#10b981'];
-  private readonly forecastMonths = 12;
 
   get totalPercentage(): number {
     return this.categories.reduce((total, category) => total + category.percentage, 0);
@@ -69,12 +70,24 @@ export class AppComponent {
     return this.roundCurrency(total);
   }
 
+  get forecastMonths(): number {
+    const value = Math.max(0, this.parseNumber(this.forecastPeriodValue));
+    const months = this.forecastPeriodUnit === 'years' ? value * 12 : value;
+    return months;
+  }
+
+  get forecastLabel(): string {
+    const period = this.forecastPeriodUnit === 'years' ? 'year' : 'month';
+    const count = this.forecastPeriodUnit === 'years' ? this.forecastPeriodValue : this.forecastPeriodValue;
+    return `${count} ${period}${count === 1 ? '' : 's'}`;
+  }
+
   get projectedSavingsValue(): number {
     const contribution = this.totalSavingsAllocation;
-    if (contribution <= 0) {
+    if (contribution <= 0 || this.forecastMonths <= 0) {
       return 0;
     }
-    // Assumes an annual interest rate compounded monthly over a 12-month forecast.
+    // Assumes an annual interest rate compounded monthly over the selected forecast period.
     const annualRate = Math.max(0, this.interestRate) / 100;
     const monthlyRate = annualRate / 12;
     if (monthlyRate === 0) {
@@ -114,6 +127,15 @@ export class AppComponent {
   updateInterestRate(value: string | number): void {
     const parsed = this.parseNumber(value);
     this.interestRate = Math.max(0, parsed);
+  }
+
+  updateForecastPeriodValue(value: string | number): void {
+    const parsed = this.parseNumber(value);
+    this.forecastPeriodValue = Math.max(0, parsed);
+  }
+
+  updateForecastPeriodUnit(value: 'months' | 'years'): void {
+    this.forecastPeriodUnit = value;
   }
 
   updateCategoryName(index: number, value: string): void {
