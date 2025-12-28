@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 interface Category {
@@ -9,11 +9,25 @@ interface Category {
   isSavings: boolean;
 }
 
+interface BudgetPlannerState {
+  income: number;
+  interestRate: number;
+  forecastPeriodValue: number;
+  forecastPeriodUnit: 'months' | 'years';
+  categories: Category[];
+}
+
 interface PieSlice {
   name: string;
   percentage: number;
   color: string;
   path: string;
+}
+
+interface SavingsForecast {
+  name: string;
+  monthlyContribution: number;
+  projectedValue: number;
 }
 
 @Component({
@@ -22,7 +36,7 @@ interface PieSlice {
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   income = 0;
   interestRate = 0;
   forecastPeriodValue = 12;
@@ -30,7 +44,13 @@ export class AppComponent {
   categories: Category[] = [];
   allocationClamped = false;
   needsIncomeWarning = false;
+  importError = '';
+  private readonly storageKey = 'budgetPlannerState';
   private readonly chartColors = ['#2563eb', '#f97316', '#14b8a6', '#a855f7', '#facc15', '#10b981'];
+
+  ngOnInit(): void {
+    this.loadState();
+  }
 
   get totalPercentage(): number {
     return this.categories.reduce((total, category) => total + category.percentage, 0);
@@ -83,19 +103,16 @@ export class AppComponent {
   }
 
   get projectedSavingsValue(): number {
-    const contribution = this.totalSavingsAllocation;
-    if (contribution <= 0 || this.forecastMonths <= 0) {
-      return 0;
-    }
-    // Assumes an annual interest rate compounded monthly over the selected forecast period.
-    const annualRate = Math.max(0, this.interestRate) / 100;
-    const monthlyRate = annualRate / 12;
-    if (monthlyRate === 0) {
-      return this.roundCurrency(contribution * this.forecastMonths);
-    }
-    const growthFactor = Math.pow(1 + monthlyRate, this.forecastMonths);
-    const futureValue = contribution * ((growthFactor - 1) / monthlyRate);
-    return this.roundCurrency(futureValue);
+    return this.futureValueForContribution(this.totalSavingsAllocation);
+  }
+
+  get savingsForecasts(): SavingsForecast[] {
+    const savingsCategories = this.categories.filter((category) => category.isSavings);
+    return savingsCategories.map((category, index) => ({
+      name: category.name?.trim() || `Savings ${index + 1}`,
+      monthlyContribution: category.amount,
+      projectedValue: this.futureValueForContribution(category.amount)
+    }));
   }
 
   addCategory(): void {
@@ -109,12 +126,14 @@ export class AppComponent {
       }
     ];
     this.allocationClamped = false;
+    this.persistState();
   }
 
   removeCategory(index: number): void {
     this.categories.splice(index, 1);
     this.allocationClamped = false;
     this.needsIncomeWarning = false;
+    this.persistState();
   }
 
   updateIncome(value: string | number): void {
@@ -122,28 +141,34 @@ export class AppComponent {
     this.income = Math.max(0, parsed);
     this.needsIncomeWarning = false;
     this.recalculateAmounts();
+    this.persistState();
   }
 
   updateInterestRate(value: string | number): void {
     const parsed = this.parseNumber(value);
     this.interestRate = Math.max(0, parsed);
+    this.persistState();
   }
 
   updateForecastPeriodValue(value: string | number): void {
     const parsed = this.parseNumber(value);
     this.forecastPeriodValue = Math.max(0, parsed);
+    this.persistState();
   }
 
   updateForecastPeriodUnit(value: 'months' | 'years'): void {
     this.forecastPeriodUnit = value;
+    this.persistState();
   }
 
   updateCategoryName(index: number, value: string): void {
     this.categories[index].name = value;
+    this.persistState();
   }
 
   updateCategorySavings(index: number, value: boolean): void {
     this.categories[index].isSavings = value;
+    this.persistState();
   }
 
   updateCategoryPercentage(index: number, value: string | number): void {
@@ -155,6 +180,7 @@ export class AppComponent {
     this.categories[index].amount = this.roundCurrency(
       (this.income * this.categories[index].percentage) / 100
     );
+    this.persistState();
   }
 
   updateCategoryAmount(index: number, value: string | number): void {
@@ -163,6 +189,7 @@ export class AppComponent {
     if (this.income <= 0) {
       this.categories[index].percentage = 0;
       this.needsIncomeWarning = amount > 0;
+      this.persistState();
       return;
     }
 
@@ -175,6 +202,45 @@ export class AppComponent {
       (this.income * this.categories[index].percentage) / 100
     );
     this.needsIncomeWarning = false;
+    this.persistState();
+  }
+
+  exportBudgetData(): void {
+    const payload = JSON.stringify(this.buildState(), null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'budget-planner-data.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  importBudgetData(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : '';
+      const parsed = this.safeParseJson(text);
+      const state = parsed ? this.parseState(parsed) : null;
+      if (!state) {
+        this.importError = 'Import failed. The selected file is not a valid budget export.';
+        return;
+      }
+      this.applyState(state);
+      this.importError = '';
+      this.persistState();
+    };
+    reader.onerror = () => {
+      this.importError = 'Import failed. Please try a different file.';
+    };
+    reader.readAsText(file);
+    input.value = '';
   }
 
   private recalculateAmounts(): void {
@@ -196,6 +262,135 @@ export class AppComponent {
   private parseNumber(value: string | number): number {
     const parsed = typeof value === 'number' ? value : Number.parseFloat(value);
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private futureValueForContribution(contribution: number): number {
+    if (contribution <= 0 || this.forecastMonths <= 0) {
+      return 0;
+    }
+    // Assumes an annual interest rate compounded monthly over the selected forecast period.
+    const annualRate = Math.max(0, this.interestRate) / 100;
+    const monthlyRate = annualRate / 12;
+    if (monthlyRate === 0) {
+      return this.roundCurrency(contribution * this.forecastMonths);
+    }
+    const growthFactor = Math.pow(1 + monthlyRate, this.forecastMonths);
+    const futureValue = contribution * ((growthFactor - 1) / monthlyRate);
+    return this.roundCurrency(futureValue);
+  }
+
+  private buildState(): BudgetPlannerState {
+    return {
+      income: this.roundCurrency(this.income),
+      interestRate: this.roundPercentage(this.interestRate),
+      forecastPeriodValue: this.forecastPeriodValue,
+      forecastPeriodUnit: this.forecastPeriodUnit,
+      categories: this.categories.map((category) => ({
+        name: category.name,
+        percentage: category.percentage,
+        amount: category.amount,
+        isSavings: category.isSavings
+      }))
+    };
+  }
+
+  private applyState(state: BudgetPlannerState): void {
+    this.income = Math.max(0, this.parseNumber(state.income));
+    this.interestRate = Math.max(0, this.parseNumber(state.interestRate));
+    this.forecastPeriodValue = Math.max(0, this.parseNumber(state.forecastPeriodValue));
+    this.forecastPeriodUnit = state.forecastPeriodUnit;
+    this.categories = state.categories;
+    this.allocationClamped = false;
+    this.needsIncomeWarning = false;
+  }
+
+  private loadState(): void {
+    if (!this.storageAvailable()) {
+      return;
+    }
+    const raw = localStorage.getItem(this.storageKey);
+    if (!raw) {
+      return;
+    }
+    const parsed = this.safeParseJson(raw);
+    const state = parsed ? this.parseState(parsed) : null;
+    if (state) {
+      this.applyState(state);
+    }
+  }
+
+  private persistState(): void {
+    if (!this.storageAvailable()) {
+      return;
+    }
+    localStorage.setItem(this.storageKey, JSON.stringify(this.buildState()));
+  }
+
+  private safeParseJson(raw: string): unknown | null {
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+  }
+
+  private parseState(value: unknown): BudgetPlannerState | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const data = value as Record<string, unknown>;
+    const forecastUnit = data['forecastPeriodUnit'] === 'years' ? 'years' : 'months';
+    const categories = Array.isArray(data['categories'])
+      ? data['categories']
+          .filter((item) => item && typeof item === 'object')
+          .map((item, index) => {
+            const entry = item as Record<string, unknown>;
+            const name = this.coerceString(entry['name'], `Category ${index + 1}`);
+            const percentage = this.clampNumber(this.coerceNumber(entry['percentage']), 0, 100);
+            const amount = Math.max(0, this.coerceNumber(entry['amount']));
+            const isSavings = this.coerceBoolean(entry['isSavings']);
+            return {
+              name,
+              percentage: this.roundPercentage(percentage),
+              amount: this.roundCurrency(amount),
+              isSavings
+            };
+          })
+      : [];
+    return {
+      income: Math.max(0, this.coerceNumber(data['income'])),
+      interestRate: Math.max(0, this.coerceNumber(data['interestRate'])),
+      forecastPeriodValue: Math.max(0, this.coerceNumber(data['forecastPeriodValue'], 12)),
+      forecastPeriodUnit: forecastUnit,
+      categories
+    };
+  }
+
+  private storageAvailable(): boolean {
+    try {
+      return typeof localStorage !== 'undefined';
+    } catch {
+      return false;
+    }
+  }
+
+  private coerceString(value: unknown, fallback = ''): string {
+    return typeof value === 'string' ? value : fallback;
+  }
+
+  private coerceNumber(value: unknown, fallback = 0): number {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : fallback;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+    return fallback;
+  }
+
+  private coerceBoolean(value: unknown, fallback = false): boolean {
+    return typeof value === 'boolean' ? value : fallback;
   }
 
   private clampNumber(value: number, min: number, max: number): number {

@@ -174,6 +174,26 @@
       <p class="helper-text">
         Assumes the rate is annual and compounded monthly over the selected period.
       </p>
+      <div class="forecast-breakdown">
+        <div class="forecast-breakdown__header">
+          <h3>Savings forecast by account</h3>
+          <p>Track each savings allocation separately.</p>
+        </div>
+        <div class="forecast-breakdown__list" *ngIf="savingsForecasts.length > 0; else noSavings">
+          <div class="forecast-breakdown__card" *ngFor="let forecast of savingsForecasts">
+            <span class="forecast-breakdown__name">{{ forecast.name }}</span>
+            <span class="forecast-breakdown__meta">
+              Monthly contribution: {{ forecast.monthlyContribution | number: '1.2-2' }}
+            </span>
+            <strong class="forecast-breakdown__value">
+              {{ forecastLabel }} value: {{ forecast.projectedValue | number: '1.2-2' }}
+            </strong>
+          </div>
+        </div>
+        <ng-template #noSavings>
+          <p class="helper-text">Mark categories as savings to see individual forecasts.</p>
+        </ng-template>
+      </div>
       <div class="forecast-summary">
         <div>
           <span>Total monthly savings allocation</span>
@@ -187,6 +207,21 @@
           <span>{{ forecastLabel }} projected value</span>
           <strong>{{ projectedSavingsValue | number: '1.2-2' }}</strong>
         </div>
+      </div>
+      <div class="data-tools">
+        <div>
+          <h3>Export &amp; import</h3>
+          <p>Exports include categories, forecast settings, and income.</p>
+          <p class="helper-text">Your data is also saved automatically in this browser.</p>
+        </div>
+        <div class="data-tools__actions">
+          <button type="button" class="button" (click)="exportBudgetData()">Export JSON</button>
+          <label class="button button--ghost data-tools__import">
+            Import JSON
+            <input type="file" accept="application/json" (change)="importBudgetData($event)" />
+          </label>
+        </div>
+        <p class="helper-text helper-text--warning" *ngIf="importError">{{ importError }}</p>
       </div>
     </div>
   </section>
