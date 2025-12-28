@@ -60,8 +60,19 @@
             <input
               type="text"
               placeholder="Rent, groceries..."
-              [ngModel]="category.name"
+              [(ngModel)]="category.name"
               (ngModelChange)="updateCategoryName(i, $event)"
+            />
+          </label>
+          <label class="input-field">
+            <span>Allocation slider</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="0.01"
+              [(ngModel)]="category.percentage"
+              (ngModelChange)="updateCategoryPercentage(i, $event)"
             />
           </label>
           <label class="input-field">
@@ -71,24 +82,18 @@
               min="0"
               max="100"
               step="0.01"
-              [ngModel]="category.percentage"
+              [(ngModel)]="category.percentage"
               (ngModelChange)="updateCategoryPercentage(i, $event)"
             />
           </label>
-          <label class="input-field">
+          <div class="input-field">
             <span>Amount</span>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              [ngModel]="category.amount"
-              (ngModelChange)="updateCategoryAmount(i, $event)"
-            />
-          </label>
+            <strong>{{ category.amount | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+          </div>
           <label class="toggle-field">
             <input
               type="checkbox"
-              [ngModel]="category.isSavings"
+              [(ngModel)]="category.isSavings"
               (ngModelChange)="updateCategorySavings(i, $event)"
             />
             <span>Savings goal</span>
