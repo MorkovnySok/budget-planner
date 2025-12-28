@@ -335,14 +335,10 @@
   flex: 1 1 240px;
 }
 
-.category-chart__visual svg {
+.category-chart__visual canvas {
   width: 100%;
   max-width: 260px;
-  height: auto;
-}
-
-.category-chart__base {
-  fill: #e2e8f0;
+  height: 260px;
 }
 
 .category-chart__empty {
