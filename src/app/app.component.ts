@@ -24,10 +24,12 @@ interface PieSlice {
 })
 export class AppComponent {
   income = 0;
+  interestRate = 0;
   categories: Category[] = [];
   allocationClamped = false;
   needsIncomeWarning = false;
   private readonly chartColors = ['#2563eb', '#f97316', '#14b8a6', '#a855f7', '#facc15', '#10b981'];
+  private readonly forecastMonths = 12;
 
   get totalPercentage(): number {
     return this.categories.reduce((total, category) => total + category.percentage, 0);
@@ -60,6 +62,29 @@ export class AppComponent {
       });
   }
 
+  get totalSavingsAllocation(): number {
+    const total = this.categories
+      .filter((category) => category.isSavings)
+      .reduce((sum, category) => sum + category.amount, 0);
+    return this.roundCurrency(total);
+  }
+
+  get projectedSavingsValue(): number {
+    const contribution = this.totalSavingsAllocation;
+    if (contribution <= 0) {
+      return 0;
+    }
+    // Assumes an annual interest rate compounded monthly over a 12-month forecast.
+    const annualRate = Math.max(0, this.interestRate) / 100;
+    const monthlyRate = annualRate / 12;
+    if (monthlyRate === 0) {
+      return this.roundCurrency(contribution * this.forecastMonths);
+    }
+    const growthFactor = Math.pow(1 + monthlyRate, this.forecastMonths);
+    const futureValue = contribution * ((growthFactor - 1) / monthlyRate);
+    return this.roundCurrency(futureValue);
+  }
+
   addCategory(): void {
     this.categories = [
       ...this.categories,
@@ -84,6 +109,11 @@ export class AppComponent {
     this.income = Math.max(0, parsed);
     this.needsIncomeWarning = false;
     this.recalculateAmounts();
+  }
+
+  updateInterestRate(value: string | number): void {
+    const parsed = this.parseNumber(value);
+    this.interestRate = Math.max(0, parsed);
   }
 
   updateCategoryName(index: number, value: string): void {
