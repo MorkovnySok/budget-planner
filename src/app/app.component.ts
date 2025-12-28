@@ -9,6 +9,13 @@ interface Category {
   isSavings: boolean;
 }
 
+interface PieSlice {
+  name: string;
+  percentage: number;
+  color: string;
+  path: string;
+}
+
 @Component({
   selector: 'app-root',
   imports: [CommonModule, FormsModule],
@@ -20,6 +27,7 @@ export class AppComponent {
   categories: Category[] = [];
   allocationClamped = false;
   needsIncomeWarning = false;
+  private readonly chartColors = ['#2563eb', '#f97316', '#14b8a6', '#a855f7', '#facc15', '#10b981'];
 
   get totalPercentage(): number {
     return this.categories.reduce((total, category) => total + category.percentage, 0);
@@ -27,6 +35,29 @@ export class AppComponent {
 
   get remainingPercentage(): number {
     return Math.max(0, 100 - this.totalPercentage);
+  }
+
+  get pieSlices(): PieSlice[] {
+    const total = this.totalPercentage;
+    if (total <= 0) {
+      return [];
+    }
+
+    let startAngle = 0;
+    return this.categories
+      .filter((category) => category.percentage > 0)
+      .map((category, index) => {
+        const angle = (category.percentage / total) * 360;
+        const endAngle = startAngle + angle;
+        const slice: PieSlice = {
+          name: category.name || `Category ${index + 1}`,
+          percentage: category.percentage,
+          color: this.chartColors[index % this.chartColors.length],
+          path: this.describeArc(60, 60, 54, startAngle, endAngle)
+        };
+        startAngle = endAngle;
+        return slice;
+      });
   }
 
   addCategory(): void {
@@ -125,5 +156,40 @@ export class AppComponent {
 
   private roundPercentage(value: number): number {
     return Math.round(value * 100) / 100;
+  }
+
+  private polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
+    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
+    return {
+      x: centerX + radius * Math.cos(angleInRadians),
+      y: centerY + radius * Math.sin(angleInRadians)
+    };
+  }
+
+  private describeArc(
+    centerX: number,
+    centerY: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number
+  ): string {
+    if (endAngle - startAngle >= 360) {
+      const diameter = radius * 2;
+      return [
+        `M ${centerX} ${centerY}`,
+        `m ${-radius} 0`,
+        `a ${radius} ${radius} 0 1 0 ${diameter} 0`,
+        `a ${radius} ${radius} 0 1 0 ${-diameter} 0`
+      ].join(' ');
+    }
+    const start = this.polarToCartesian(centerX, centerY, radius, endAngle);
+    const end = this.polarToCartesian(centerX, centerY, radius, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+    return [
+      `M ${centerX} ${centerY}`,
+      `L ${start.x} ${start.y}`,
+      `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`,
+      'Z'
+    ].join(' ');
   }
 }

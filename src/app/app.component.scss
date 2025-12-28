@@ -103,7 +103,6 @@
 }
 
 .category-list,
-.chart-container,
 .forecast-container {
   border-radius: 12px;
   border: 1px dashed #cbd2d9;
@@ -190,15 +189,75 @@
   box-shadow: 0 8px 16px rgba(148, 163, 184, 0.35);
 }
 
-.chart-container {
-  min-height: 200px;
-  display: grid;
-  place-items: center;
+.forecast-container {
+  min-height: 120px;
+}
+
+.category-chart {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.category-chart__visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1 1 240px;
+}
+
+.category-chart__visual svg {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+}
+
+.category-chart__base {
+  fill: #e2e8f0;
+}
+
+.category-chart__empty {
+  margin: 0;
+  color: #52606d;
   font-weight: 600;
 }
 
-.forecast-container {
-  min-height: 120px;
+.category-chart__legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+  flex: 1 1 240px;
+  text-align: left;
+}
+
+.category-chart__legend li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.category-chart__swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.category-chart__name {
+  display: block;
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.category-chart__meta {
+  display: block;
+  font-size: 0.85rem;
+  color: #52606d;
 }
 
 @media (max-width: 720px) {
