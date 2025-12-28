@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Chart, type ChartConfiguration, registerables } from 'chart.js';
 
 interface Category {
   name: string;
@@ -36,6 +37,9 @@ interface SavingsForecast {
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
+  static {
+    Chart.register(...registerables);
+  }
   @ViewChild('categoryChart') categoryChart?: ElementRef<HTMLCanvasElement>;
 
   income = 0;
@@ -48,11 +52,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   importError = '';
   private readonly storageKey = 'budgetPlannerState';
   private readonly chartColors = ['#2563eb', '#f97316', '#14b8a6', '#a855f7', '#facc15', '#10b981'];
-  private chart?: {
-    data: { labels: string[]; datasets: Array<{ data: number[]; backgroundColor: string[] }> };
-    update: () => void;
-    destroy: () => void;
-  };
+  private chart?: Chart<'pie', number[], string>;
   private viewReady = false;
 
   ngOnInit(): void {
@@ -444,7 +444,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const config = {
+    const config: ChartConfiguration<'pie', number[], string> = {
       type: 'pie',
       data: {
         labels,
@@ -467,10 +467,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     };
 
-    const chartConstructor = (window as { Chart?: new (...args: any[]) => any }).Chart;
-    if (!chartConstructor) {
-      return;
-    }
-    this.chart = new chartConstructor(canvas, config);
+    this.chart = new Chart(canvas, config);
   }
 }
