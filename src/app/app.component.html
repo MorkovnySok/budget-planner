@@ -96,7 +96,7 @@
               [(ngModel)]="category.isSavings"
               (ngModelChange)="updateCategorySavings(i, $event)"
             />
-            <span>Savings goal</span>
+            <span>Savings</span>
           </label>
         </div>
         <button type="button" class="button button--ghost" (click)="removeCategory(i)">
@@ -134,7 +134,34 @@
       <p>See how your balance grows over time.</p>
     </div>
     <div class="forecast-container">
-      <p>Forecast details will appear here.</p>
+      <label class="input-field">
+        <span>Annual interest rate</span>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+          [ngModel]="interestRate"
+          (ngModelChange)="updateInterestRate($event)"
+        />
+      </label>
+      <p class="helper-text">
+        Assumes the rate is annual and compounded monthly over 12 months.
+      </p>
+      <div class="forecast-summary">
+        <div>
+          <span>Total monthly savings allocation</span>
+          <strong>{{ totalSavingsAllocation | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+        </div>
+        <div>
+          <span>Interest rate</span>
+          <strong>{{ interestRate | number: '1.0-2' }}%</strong>
+        </div>
+        <div>
+          <span>12-month projected value</span>
+          <strong>{{ projectedSavingsValue | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+        </div>
+      </div>
     </div>
   </section>
 </main>
