@@ -104,15 +104,27 @@
         </button>
       </div>
     </div>
-  </section>
-
-  <section class="calculator__section calculator__chart" aria-labelledby="chart-title">
-    <div class="section__header">
-      <h2 id="chart-title">Spending breakdown</h2>
-      <p>Visualize where your money goes.</p>
-    </div>
-    <div class="chart-container" aria-hidden="true">
-      <span>Chart placeholder</span>
+    <div class="category-chart">
+      <div class="category-chart__visual">
+        <svg viewBox="0 0 120 120" role="img" aria-label="Category allocation pie chart">
+          <circle cx="60" cy="60" r="54" class="category-chart__base"></circle>
+          <ng-container *ngFor="let slice of pieSlices">
+            <path [attr.d]="slice.path" [attr.fill]="slice.color"></path>
+          </ng-container>
+        </svg>
+        <p class="category-chart__empty" *ngIf="pieSlices.length === 0">
+          Add category allocations to see the chart.
+        </p>
+      </div>
+      <ul class="category-chart__legend" *ngIf="pieSlices.length > 0">
+        <li *ngFor="let slice of pieSlices">
+          <span class="category-chart__swatch" [style.background-color]="slice.color"></span>
+          <div>
+            <span class="category-chart__name">{{ slice.name }}</span>
+            <span class="category-chart__meta">{{ slice.percentage | number: '1.0-2' }}%</span>
+          </div>
+        </li>
+      </ul>
     </div>
   </section>
 
