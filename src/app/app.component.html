@@ -14,7 +14,14 @@
     </div>
     <label class="input-field">
       <span>Monthly income</span>
-      <input type="number" placeholder="$0.00" />
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="$0.00"
+        [ngModel]="income"
+        (ngModelChange)="updateIncome($event)"
+      />
     </label>
   </section>
 
@@ -24,10 +31,73 @@
         <h2 id="categories-title">Categories</h2>
         <p>Organize recurring expenses and savings goals.</p>
       </div>
-      <button type="button" class="button">Add category</button>
+      <button type="button" class="button" (click)="addCategory()">Add category</button>
     </div>
+    <div class="allocation-summary" [class.allocation-summary--warning]="allocationClamped">
+      <div>
+        <span>Total allocated</span>
+        <strong>{{ totalPercentage | number: '1.0-2' }}%</strong>
+      </div>
+      <div>
+        <span>Remaining</span>
+        <strong>{{ remainingPercentage | number: '1.0-2' }}%</strong>
+      </div>
+    </div>
+    <p class="helper-text helper-text--warning" *ngIf="allocationClamped">
+      Total allocation cannot exceed 100%. The latest entry was adjusted.
+    </p>
+    <p class="helper-text helper-text--warning" *ngIf="needsIncomeWarning">
+      Add monthly income to calculate percentages from amounts.
+    </p>
     <div class="category-list" role="list">
-      <p class="category-list__empty">No categories added yet.</p>
+      <p class="category-list__empty" *ngIf="categories.length === 0">
+        No categories added yet.
+      </p>
+      <div class="category-card" role="listitem" *ngFor="let category of categories; index as i">
+        <div class="category-card__fields">
+          <label class="input-field">
+            <span>Category</span>
+            <input
+              type="text"
+              placeholder="Rent, groceries..."
+              [ngModel]="category.name"
+              (ngModelChange)="updateCategoryName(i, $event)"
+            />
+          </label>
+          <label class="input-field">
+            <span>Percentage</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              [ngModel]="category.percentage"
+              (ngModelChange)="updateCategoryPercentage(i, $event)"
+            />
+          </label>
+          <label class="input-field">
+            <span>Amount</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="category.amount"
+              (ngModelChange)="updateCategoryAmount(i, $event)"
+            />
+          </label>
+          <label class="toggle-field">
+            <input
+              type="checkbox"
+              [ngModel]="category.isSavings"
+              (ngModelChange)="updateCategorySavings(i, $event)"
+            />
+            <span>Savings goal</span>
+          </label>
+        </div>
+        <button type="button" class="button button--ghost" (click)="removeCategory(i)">
+          Remove
+        </button>
+      </div>
     </div>
   </section>
 
