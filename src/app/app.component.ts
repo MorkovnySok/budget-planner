@@ -206,12 +206,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const rawPercentage = (amount / this.income) * 100;
     const maxAllowed = this.maxPercentageFor(index);
-    const nextPercentage = Math.min(rawPercentage, maxAllowed);
-    this.allocationClamped = rawPercentage > maxAllowed;
+    const isClamped = rawPercentage > maxAllowed;
+    const nextPercentage = isClamped ? maxAllowed : rawPercentage;
+    this.allocationClamped = isClamped;
     this.categories[index].percentage = this.roundPercentage(nextPercentage);
-    this.categories[index].amount = this.roundCurrency(
-      (this.income * this.categories[index].percentage) / 100
-    );
+    if (isClamped) {
+      this.categories[index].amount = this.roundCurrency(
+        (this.income * this.categories[index].percentage) / 100
+      );
+    }
     this.needsIncomeWarning = false;
     this.persistState();
   }
