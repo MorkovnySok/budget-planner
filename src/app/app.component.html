@@ -18,7 +18,7 @@
         type="number"
         min="0"
         step="0.01"
-        placeholder="$0.00"
+        placeholder="0.00"
         [ngModel]="income"
         (ngModelChange)="updateIncome($event)"
       />
@@ -88,7 +88,13 @@
           </label>
           <div class="input-field">
             <span>Amount</span>
-            <strong>{{ category.amount | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="category.amount"
+              (ngModelChange)="updateCategoryAmount(i, $event)"
+            />
           </div>
           <label class="toggle-field">
             <input
@@ -145,21 +151,41 @@
           (ngModelChange)="updateInterestRate($event)"
         />
       </label>
+      <div class="forecast-period">
+        <label class="input-field">
+          <span>Forecast period</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            placeholder="12"
+            [ngModel]="forecastPeriodValue"
+            (ngModelChange)="updateForecastPeriodValue($event)"
+          />
+        </label>
+        <label class="input-field">
+          <span>Period unit</span>
+          <select [ngModel]="forecastPeriodUnit" (ngModelChange)="updateForecastPeriodUnit($event)">
+            <option value="months">Months</option>
+            <option value="years">Years</option>
+          </select>
+        </label>
+      </div>
       <p class="helper-text">
-        Assumes the rate is annual and compounded monthly over 12 months.
+        Assumes the rate is annual and compounded monthly over the selected period.
       </p>
       <div class="forecast-summary">
         <div>
           <span>Total monthly savings allocation</span>
-          <strong>{{ totalSavingsAllocation | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+          <strong>{{ totalSavingsAllocation | number: '1.2-2' }}</strong>
         </div>
         <div>
           <span>Interest rate</span>
           <strong>{{ interestRate | number: '1.0-2' }}%</strong>
         </div>
         <div>
-          <span>12-month projected value</span>
-          <strong>{{ projectedSavingsValue | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+          <span>{{ forecastLabel }} projected value</span>
+          <strong>{{ projectedSavingsValue | number: '1.2-2' }}</strong>
         </div>
       </div>
     </div>

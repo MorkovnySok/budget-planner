@@ -80,7 +80,17 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.input-field input:focus {
+.input-field select {
+  border-radius: 12px;
+  border: 1px solid #d9e2ec;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-field input:focus,
+.input-field select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
@@ -194,6 +204,12 @@
   flex-direction: column;
   gap: 1rem;
   text-align: left;
+}
+
+.forecast-period {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
 }
 
 .forecast-summary {
