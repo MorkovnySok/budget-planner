@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 interface Category {
@@ -21,7 +21,6 @@ interface PieSlice {
   name: string;
   percentage: number;
   color: string;
-  path: string;
 }
 
 interface SavingsForecast {
@@ -36,7 +35,9 @@ interface SavingsForecast {
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('categoryChart') categoryChart?: ElementRef<HTMLCanvasElement>;
+
   income = 0;
   interestRate = 0;
   forecastPeriodValue = 12;
@@ -47,9 +48,24 @@ export class AppComponent implements OnInit {
   importError = '';
   private readonly storageKey = 'budgetPlannerState';
   private readonly chartColors = ['#2563eb', '#f97316', '#14b8a6', '#a855f7', '#facc15', '#10b981'];
+  private chart?: {
+    data: { labels: string[]; datasets: Array<{ data: number[]; backgroundColor: string[] }> };
+    update: () => void;
+    destroy: () => void;
+  };
+  private viewReady = false;
 
   ngOnInit(): void {
     this.loadState();
+  }
+
+  ngAfterViewInit(): void {
+    this.viewReady = true;
+    this.renderChart();
+  }
+
+  ngOnDestroy(): void {
+    this.chart?.destroy();
   }
 
   get totalPercentage(): number {
@@ -66,19 +82,14 @@ export class AppComponent implements OnInit {
       return [];
     }
 
-    let startAngle = 0;
     return this.categories
       .filter((category) => category.percentage > 0)
       .map((category, index) => {
-        const angle = (category.percentage / total) * 360;
-        const endAngle = startAngle + angle;
         const slice: PieSlice = {
           name: category.name || `Category ${index + 1}`,
           percentage: category.percentage,
-          color: this.chartColors[index % this.chartColors.length],
-          path: this.describeArc(60, 60, 54, startAngle, endAngle)
+          color: this.chartColors[index % this.chartColors.length]
         };
-        startAngle = endAngle;
         return slice;
       });
   }
@@ -324,6 +335,7 @@ export class AppComponent implements OnInit {
       return;
     }
     localStorage.setItem(this.storageKey, JSON.stringify(this.buildState()));
+    this.renderChart();
   }
 
   private safeParseJson(raw: string): unknown | null {
@@ -405,38 +417,60 @@ export class AppComponent implements OnInit {
     return Math.round(value * 100) / 100;
   }
 
-  private polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
-    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
-    return {
-      x: centerX + radius * Math.cos(angleInRadians),
-      y: centerY + radius * Math.sin(angleInRadians)
-    };
-  }
-
-  private describeArc(
-    centerX: number,
-    centerY: number,
-    radius: number,
-    startAngle: number,
-    endAngle: number
-  ): string {
-    if (endAngle - startAngle >= 360) {
-      const diameter = radius * 2;
-      return [
-        `M ${centerX} ${centerY}`,
-        `m ${-radius} 0`,
-        `a ${radius} ${radius} 0 1 0 ${diameter} 0`,
-        `a ${radius} ${radius} 0 1 0 ${-diameter} 0`
-      ].join(' ');
+  private renderChart(): void {
+    if (!this.viewReady) {
+      return;
     }
-    const start = this.polarToCartesian(centerX, centerY, radius, endAngle);
-    const end = this.polarToCartesian(centerX, centerY, radius, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
-    return [
-      `M ${centerX} ${centerY}`,
-      `L ${start.x} ${start.y}`,
-      `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`,
-      'Z'
-    ].join(' ');
+    const canvas = this.categoryChart?.nativeElement;
+    if (!canvas) {
+      return;
+    }
+
+    const slices = this.pieSlices;
+    const labels = slices.map((slice) => slice.name);
+    const data = slices.map((slice) => slice.percentage);
+    const colors = slices.map((slice) => slice.color);
+
+    if (this.chart) {
+      this.chart.data.labels = labels;
+      const dataset = this.chart.data.datasets[0];
+      dataset.data = data;
+      dataset.backgroundColor = colors;
+      this.chart.update();
+      return;
+    }
+
+    if (slices.length === 0) {
+      return;
+    }
+
+    const config = {
+      type: 'pie',
+      data: {
+        labels,
+        datasets: [
+          {
+            data,
+            backgroundColor: colors,
+            borderWidth: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
+      }
+    };
+
+    const chartConstructor = (window as { Chart?: new (...args: any[]) => any }).Chart;
+    if (!chartConstructor) {
+      return;
+    }
+    this.chart = new chartConstructor(canvas, config);
   }
 }

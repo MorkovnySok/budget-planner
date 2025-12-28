@@ -112,12 +112,12 @@
     </div>
     <div class="category-chart">
       <div class="category-chart__visual">
-        <svg viewBox="0 0 120 120" role="img" aria-label="Category allocation pie chart">
-          <circle cx="60" cy="60" r="54" class="category-chart__base"></circle>
-          <ng-container *ngFor="let slice of pieSlices">
-            <path [attr.d]="slice.path" [attr.fill]="slice.color"></path>
-          </ng-container>
-        </svg>
+        <canvas
+          #categoryChart
+          class="category-chart__canvas"
+          role="img"
+          aria-label="Category allocation pie chart"
+        ></canvas>
         <p class="category-chart__empty" *ngIf="pieSlices.length === 0">
           Add category allocations to see the chart.
         </p>
