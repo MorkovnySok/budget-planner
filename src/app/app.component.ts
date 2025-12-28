@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Chart, type ChartConfiguration, registerables } from 'chart.js';
 
 interface Category {
   name: string;
@@ -36,10 +35,7 @@ interface SavingsForecast {
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
-  static {
-    Chart.register(...registerables);
-  }
+export class AppComponent implements OnInit, AfterViewInit {
   @ViewChild('categoryChart') categoryChart?: ElementRef<HTMLCanvasElement>;
 
   income = 0;
@@ -52,7 +48,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   importError = '';
   private readonly storageKey = 'budgetPlannerState';
   private readonly chartColors = ['#2563eb', '#f97316', '#14b8a6', '#a855f7', '#facc15', '#10b981'];
-  private chart?: Chart<'pie', number[], string>;
   private viewReady = false;
 
   ngOnInit(): void {
@@ -62,10 +57,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.viewReady = true;
     this.renderChart();
-  }
-
-  ngOnDestroy(): void {
-    this.chart?.destroy();
   }
 
   get totalPercentage(): number {
@@ -429,47 +420,75 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return;
+    }
+
+    const bounds = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(1, bounds.width);
+    const height = Math.max(1, bounds.height);
+    const scaledWidth = Math.floor(width * ratio);
+    const scaledHeight = Math.floor(height * ratio);
+
+    if (canvas.width !== scaledWidth || canvas.height !== scaledHeight) {
+      canvas.width = scaledWidth;
+      canvas.height = scaledHeight;
+    }
+
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, width, height);
+
     const slices = this.pieSlices;
-    const labels = slices.map((slice) => slice.name);
-    const data = slices.map((slice) => slice.percentage);
-    const colors = slices.map((slice) => slice.color);
-
-    if (this.chart) {
-      this.chart.data.labels = labels;
-      const dataset = this.chart.data.datasets[0];
-      dataset.data = data;
-      dataset.backgroundColor = colors;
-      this.chart.update();
-      return;
-    }
-
     if (slices.length === 0) {
+      this.drawEmptyState(context, width, height);
       return;
     }
 
-    const config: ChartConfiguration<'pie', number[], string> = {
-      type: 'pie',
-      data: {
-        labels,
-        datasets: [
-          {
-            data,
-            backgroundColor: colors,
-            borderWidth: 0
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        }
-      }
-    };
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.max(0, Math.min(centerX, centerY) - 8);
+    const total = slices.reduce((sum, slice) => sum + slice.percentage, 0);
+    let startAngle = -Math.PI / 2;
 
-    this.chart = new Chart(canvas, config);
+    slices.forEach((slice) => {
+      const sliceAngle = total > 0 ? (slice.percentage / total) * Math.PI * 2 : 0;
+      const endAngle = startAngle + sliceAngle;
+
+      context.beginPath();
+      context.moveTo(centerX, centerY);
+      context.arc(centerX, centerY, radius, startAngle, endAngle);
+      context.closePath();
+      context.fillStyle = slice.color;
+      context.fill();
+
+      context.strokeStyle = '#ffffff';
+      context.lineWidth = 2;
+      context.stroke();
+
+      startAngle = endAngle;
+    });
+  }
+
+  private drawEmptyState(context: CanvasRenderingContext2D, width: number, height: number): void {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.max(0, Math.min(centerX, centerY) - 8);
+
+    context.beginPath();
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    context.fillStyle = '#f1f5f9';
+    context.fill();
+
+    context.strokeStyle = '#e2e8f0';
+    context.lineWidth = 2;
+    context.stroke();
+
+    context.fillStyle = '#94a3b8';
+    context.font = '14px Inter, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('Add categories to see a breakdown.', centerX, centerY);
   }
 }
